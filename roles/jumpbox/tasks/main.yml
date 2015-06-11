@@ -1,4 +1,6 @@
+
 - apt: update_cache=yes
+  ignore_errors: true
 
 - name: Install list of packages Required for Jumpbox
   apt: pkg={{item}} state=installed
@@ -7,6 +9,18 @@
      - git
      - aptitude
      - software-properties-common
+     - build-essential
+     - python-dev
+
+# Need to eventually fill in Redhat Version Here
+# - name: Install list of packages Required for Jumpbox
+#   rpm: pkg={{item}} state=installed
+#   with_items:
+#      - python-setuptools
+#      - git
+# 
+# Need yum groupinstall "Development tools"
+
 
 # Install few dependences for ansible
 - easy_install: name=pip #  puts it nicely in /usr/local/bin/pip

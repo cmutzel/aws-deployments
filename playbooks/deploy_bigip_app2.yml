@@ -221,7 +221,8 @@
           payload='{{demo_iApp|to_nice_json}}'
           collection_path='mgmt/tm/sys/application/service'
           resource_key="name"
-
+      ignore_errors: true
+# 
 #     - name: Setup the iApp
 #       delegate_to: localhost
 #       uri:

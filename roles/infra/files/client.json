@@ -45,7 +45,7 @@
   "Mappings": {
     "AWSRegionArch2AMI": {
       "us-east-1": {
-        "AMI": " ami-d05e75b8"
+        "AMI": "ami-d05e75b8"
       },
       "us-west-1": {
         "AMI": "ami-df6a8b9b"
@@ -91,7 +91,7 @@
         ]
       }
     },
-    "WebServerInstance": {
+    "ClientInstance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
         "ImageId": {

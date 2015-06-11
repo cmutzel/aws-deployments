@@ -1,6 +1,6 @@
 ---
 
-- name: Launch a big-ip in each AZ
+- name: Launch a GTM in each AZ
   action: cloudformation
     stack_name="{{ env_name }}-{{ inventory_hostname }}"
     state=present

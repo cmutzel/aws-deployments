@@ -1,0 +1,110 @@
+---
+- hosts: gtm-managers
+  gather_facts: no
+  tasks:
+    - name: deploy gtms
+      include: "{{ install_path }}/roles/infra/tasks/deploy_gtm.yml"
+
+
+# Attach an EIP to the GTM Listener
+# This is not quite a normal VIP like we provision an EIP on a per-app basis in LTM 
+# GTM CFT should probably just create 2 EIPs automatically. 
+# 1 for the Self-IP (currently done in CFT)
+# 1 for GTM Listener VIP
+- hosts: gtm-managers
+  gather_facts: no
+  vars:
+    vip_id: "Vip1"
+  #Grab Interface IDs and Secondary IPs from each BIGIP
+  vars_files:
+     - "~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.yml"
+  tasks:
+    - name: deploy eips
+      include: "{{ install_path }}/roles/bigip_app/tasks/deploy_eip.yml"
+
+# We need some way to add the managemnt ips to the gtms group
+# Unfortunately, the add_hosts directive in ansible does not actually
+# execute on a per-host basis within a playbook.  
+# Here we solve this problem by looping through JSON results from previous 
+# provisioning steps by the bigip-managers group
+- hosts: 
+   localhost
+  gather_facts: no
+  tasks:
+    - shell: "cat ~/vars/f5aws/env/{{ env_name }}/{{ item }}.json"
+      register: output
+      with_items: groups['gtm-managers']
+      delegate_to: localhost
+
+    - add_host: name="{{ item.stdout | from_json | attr('get')('ManagementInterfacePublicIp') }}" group=gtms
+        ExternalInterfacePublicIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePublicIp') }}"
+        ExternalInterfacePrivateIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePrivateIp') }}"
+        VipAddress="{{ item.stdout | from_json | attr('get')('Vip1') }}"
+        region="{{region}}"
+        ansible_ssh_user="admin"
+      with_items: output['results']
+
+
+# Basic device setup using tmsh to enable further provisioning
+- hosts: gtms
+  gather_facts: no
+  roles:
+    # adds users via tmsh
+    - bigip_base 
+    # adds json so ansible doesn't puke
+    #- bigip_jsonify
+    # provisions system globals like ntp, dns, snmp, syslog, db keys  
+    - bigip_system
+    # sets AWS keys and disables DHCP
+    - bigip_system_aws
+    # sets vlans, self-ips, routes
+    - gtm_network
+    # provisions GTM 
+    - gtm_system
+
+- hosts: gtms
+  gather_facts: no
+  tasks:
+    - name: Setup the GTM UDP Listener
+      delegate_to: localhost
+      bigip_config:
+          state=present
+          host="{{ inventory_hostname }}"
+          user="{{ bigip_rest_user }}"
+          password="{{ bigip_rest_pass }}"
+          payload='{"name":"gtm_listener_udp","address":"{{VipAddress}}","mask":"255.255.255.255","ipProtocol":"udp","translateAddress":"disabled","translatePort":"disabled","profiles":[{"name":"dns"},{"name":"udp_gtm_dns"}]}'
+          collection_path='mgmt/tm/gtm/listener'
+          resource_key="name"
+
+    - name: Setup the GTM TCP Listener
+      delegate_to: localhost
+      bigip_config:
+          state=present
+          host="{{ inventory_hostname }}"
+          user="{{ bigip_rest_user }}"
+          password="{{ bigip_rest_pass }}"
+          payload='{"name":"gtm_listener_tcp","address":"{{VipAddress}}","mask":"255.255.255.255","ipProtocol":"tcp","translateAddress":"disabled","translatePort":"disabled","profiles":[{"name":"dns"},{"name":"tcp"}]}'
+          collection_path='mgmt/tm/gtm/listener'
+          resource_key="name"
+
+    - name: Setup the Datacenter
+      delegate_to: localhost
+      bigip_config:
+          state=present
+          host="{{ inventory_hostname }}"
+          user="{{ bigip_rest_user }}"
+          password="{{ bigip_rest_pass }}"
+          payload='{"name":"{{region}}"}'
+          collection_path='mgmt/tm/gtm/datacenter'
+          resource_key="name"
+
+
+
+
+- hosts: gtms
+  gather_facts: no
+  roles:
+    # Cluster the GTMs  
+    - gtm_cluster
+
+
