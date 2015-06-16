@@ -1,16 +1,10 @@
 ---
-- hosts: gtm-managers
-  gather_facts: no
-  tasks:
-    - name: deploy gtms
-      include: "{{ install_path }}/roles/infra/tasks/deploy_gtm.yml"
-
-
 # Attach an EIP to the GTM Listener
 # This is not quite a normal VIP like we provision an EIP on a per-app basis in LTM 
 # GTM CFT should probably just create 2 EIPs automatically. 
 # 1 for the Self-IP (currently done in CFT)
 # 1 for GTM Listener VIP
+
 - hosts: gtm-managers
   gather_facts: no
   vars:
@@ -22,11 +16,41 @@
     - name: deploy eips
       include: "{{ install_path }}/roles/bigip_app/tasks/deploy_eip.yml"
 
-# We need some way to add the managemnt ips to the gtms group
+
+# We need some way to add the managemnt ips to the bigips group
 # Unfortunately, the add_hosts directive in ansible does not actually
-# execute on a per-host basis within a playbook.  
-# Here we solve this problem by looping through JSON results from previous 
+# execute on a per-host basis within a playbook (i.e. only adds one host per play).
+
+# ex. doesn't work
+# - hosts: gtm-managers
+#   gather_facts: no
+#   vars_files:
+#      - "~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.yml"
+#   tasks:
+#
+#     - add_host: name="{{ stack_outputs.ManagementInterfacePublicIp }}" group=gtms
+#         ExternalInterfacePublicIp="{{ stack_outputs.ExternalInterfacePublicIp }}"
+#         ExternalInterfacePrivateIp="{{ stack_outputs.ExternalInterfacePrivateIp }}"
+#         RegKey={{RegKey}}
+#
+# as only one bigip-manager will be added
+
+# Here we solve this problem by looping through JSON results from previous
 # provisioning steps by the bigip-managers group
+
+# First we have to insert REG_KEY from inventory/hosts into JSON output of CFTs
+- hosts: gtm-managers
+  gather_facts: no
+  tasks:
+    - name: Check to make sure Key doesnt already exist
+      shell: "egrep -c RegKey ~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.json"
+      register: regkey_count
+      ignore_errors: True
+
+    - name: Append reg_key to cft output in order add reg_key to appropriate host in dynamic bigip group below
+      replace: dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.json regexp='}$' replace=', "RegKey":"{{RegKey}}"}'
+      when: regkey_count.stdout|int < 1
+
 - hosts: 
    localhost
   gather_facts: no
@@ -39,11 +63,11 @@
     - add_host: name="{{ item.stdout | from_json | attr('get')('ManagementInterfacePublicIp') }}" group=gtms
         ExternalInterfacePublicIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePublicIp') }}"
         ExternalInterfacePrivateIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePrivateIp') }}"
+        RegKey="{{ item.stdout | from_json | attr('get')('RegKey') }}"
         VipAddress="{{ item.stdout | from_json | attr('get')('Vip1') }}"
         region="{{region}}"
         ansible_ssh_user="admin"
       with_items: output['results']
-
 
 # Basic device setup using tmsh to enable further provisioning
 - hosts: gtms
@@ -51,6 +75,8 @@
   roles:
     # adds users via tmsh
     - bigip_base 
+    # licenses bigip
+    - bigip_license
     # adds json so ansible doesn't puke
     #- bigip_jsonify
     # provisions system globals like ntp, dns, snmp, syslog, db keys  
@@ -98,13 +124,14 @@
           collection_path='mgmt/tm/gtm/datacenter'
           resource_key="name"
 
-
+#TODO:
+# BIG-IP Objects
 
 
 - hosts: gtms
   gather_facts: no
   roles:
-    # Cluster the GTMs  
+    # Cluster the GTMs, gtm_add, bigip_add, etc.  
     - gtm_cluster
 
 

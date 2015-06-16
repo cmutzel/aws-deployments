@@ -1,16 +1,40 @@
 ---
+# We need some way to add the managemnt ips to the bigips group
+# Unfortunately, the add_hosts directive in ansible does not actually
+# execute on a per-host basis within a playbook (i.e. only adds one host per play).  
+
+# ex. doesn't work
+# - hosts: bigip-managers
+#   gather_facts: no
+#   vars_files:
+#      - "~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.yml"
+#   tasks:
+# 
+#     - add_host: name="{{ stack_outputs.ManagementInterfacePublicIp }}" group=bigips
+#         ExternalInterfacePublicIp="{{ stack_outputs.ExternalInterfacePublicIp }}"
+#         ExternalInterfacePrivateIp="{{ stack_outputs.ExternalInterfacePrivateIp }}"
+#         InternalInterfacePrivateIp="{{ stack_outputs.InternalInterfacePrivateIp }}"
+#         RegKey={{RegKey}}
+# 
+# as only one bigip-manager will be added
+
+# Here we solve this problem by looping through JSON results from previous 
+# provisioning steps by the bigip-managers group
+
+# First, we have a temporary Hack to insert REG_KEY from inventory/hosts into JSON output of CFTs
 - hosts: bigip-managers
   gather_facts: no
   tasks:
-    - name: deploy bigips
-      include: "{{ install_path }}/roles/infra/tasks/deploy_bigip.yml"
+    - name: Check to make sure Key doesnt already exist
+      shell: "egrep -c RegKey ~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.json"
+      register: regkey_count
+      ignore_errors: True
 
+    - name: Append reg_key to cft output in order add reg_key to appropriate host in dynamic bigip group below
+      replace: dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.json regexp='}$' replace=', "RegKey":"{{RegKey}}"}'
+      when: regkey_count.stdout|int < 1 
 
-# We need some way to add the managemnt ips to the bigips group
-# Unfortunately, the add_hosts directive in ansible does not actually
-# execute on a per-host basis within a playbook.  
-# Here we solve this problem by looping through JSON results from previous 
-# provisioning steps by the bigip-managers group
+# Now go gather up all the variables from the CFTs output
 - hosts: 
    localhost
   gather_facts: no
@@ -24,15 +48,21 @@
         ExternalInterfacePublicIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePublicIp') }}"
         ExternalInterfacePrivateIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePrivateIp') }}"
         InternalInterfacePrivateIp="{{ item.stdout | from_json | attr('get')('InternalInterfacePrivateIp') }}"
+        RegKey="{{ item.stdout | from_json | attr('get')('RegKey') }}"
       with_items: output['results']
-
 
 # Basic device setup using tmsh to enable further provisioning
 - hosts: bigips
   gather_facts: no
+  pre_tasks:
+     - name: waiting for ssh to start on bigips after initial launch
+       wait_for: port=22 host="{{inventory_hostname}}" timeout=500
+       ignore_errors: True
   roles:
     # adds users via tmsh
     - bigip_base 
+    # licenses bigip
+    - bigip_license
     # adds json so ansible doesn't puke
     #- bigip_jsonify
     # provisions system globals like ntp, dns, snmp, syslog, db keys  

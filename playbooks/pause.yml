@@ -1,0 +1,10 @@
+---
+
+- hosts: localhost
+  gather_facts: no
+  tasks:
+     - name: Pausing for 300 seconds for AMIs to initialize and BIGIPs to become operational
+       pause: seconds=300
+       tags:
+          - pause
+

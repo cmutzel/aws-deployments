@@ -21,7 +21,7 @@
       licenseModel: "{{ gtm_license_model }}"
       licensePackage: "{{ gtm_license_package }}"
       instanceType: "{{ gtm_instance_type }}"
-      amiId: "ami-f281aa9a" #us-east-1. eventually we'll want to leverage the mappings in cft
+      amiId: "ami-609db608" #BYOL BEST for us-east-1. eventually we'll want to leverage the mappings in cft
       version: "{{ gtm_version }}"
       keyName: "{{ key_name }}"
   register: gtm_deploy_results

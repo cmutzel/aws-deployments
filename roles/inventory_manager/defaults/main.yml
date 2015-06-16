@@ -17,7 +17,8 @@ gtm_version: "11.6"
 gtm_license_throughput: "25mbps"
 gtm_license_model: "hourly"
 gtm_license_package: "good"
-gtm_instance_type: "m3.xlarge"
+#gtm_instance_type: "m3.xlarge"
+gtm_instance_type: "m3.2xlarge"
 
 
 # defaults for deploying applications within docker containers

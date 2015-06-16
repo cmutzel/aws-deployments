@@ -1,24 +1,12 @@
 ---
-
-
-
-# Deploy the Client host AMIs via CFT
-# Just deploy one from Zone1 and pick up variables from there
-- hosts: zone1-clienthost-manager
-  vars_files:
-    - [ "~/vars/f5aws/env/{{ env_name }}/inventory/group_vars/zone1-az-managers" ]
-  gather_facts: no
-  tasks:
-    - name: deploy client host 
-      include: "{{ install_path }}/roles/infra/tasks/deploy_client.yml"
-
 # Now that instances created, add its IP to the dynamic clienthosts group
 # so we can configure it 
 - hosts:
    localhost
   gather_facts: no
   tasks:
-    # Re-Create a docker host temp group from data persisted to disk
+
+    # Re-Create a client host temp group from data persisted to disk
     - shell: "cat ~/vars/f5aws/env/{{ env_name }}/{{ item }}.json"
       register: output
       with_items: groups['clienthost-managers']
@@ -30,14 +18,12 @@
         ansible_ssh_user="ubuntu"
       with_items: output['results']
 
-# Now launch containers inside them
-# Amazon amis we're using already have docker installed so no need for install_docker role
 - hosts: clienthosts
   gather_facts: False
   vars:
     ansible_sudo: True
   roles:
-#    - jumpbox
+    - jumpbox
     - client
 
 
@@ -77,6 +63,7 @@
   tasks:
     - name: Grab number of existing name servers
       shell: "egrep -c nameserver /etc/resolv.conf"
+      ignore_errors: true
       register: nameserver_count
 
     - debug: var=nameserver_count.stdout
@@ -88,7 +75,7 @@
       #shell: "echo $(echo 'nameserver {{hostvars[item]['VipAddress']}}\n' | cat - /etc/resolv.conf ) >> /etc/resolv.conf"
       replace: dest=/etc/resolv.conf regexp='OVERWRITTEN' replace='OVERWRITTEN\nnameserver {{hostvars[item]['VipAddress']}}'
       with_items: groups['gtms'] 
-      when: nameserver_count.stdout < 2 
+      when: nameserver_count.stdout|int < 2
 
 ### Example Default /etc/resolv.conf in AWS ####
 

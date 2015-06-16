@@ -1,5 +1,11 @@
 #This playbook dismantles all deployed EC2 resources. 
 ---
+- hosts: zone1-clienthost-manager
+  gather_facts: no
+  tasks:
+    - name: teardown client
+      include: "{{ install_path }}/roles/infra/tasks/teardown_client.yml"
+
 - hosts: gtm-managers
   vars: 
      vip_id: Vip1

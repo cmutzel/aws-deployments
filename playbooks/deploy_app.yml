@@ -1,13 +1,8 @@
 ---
-# Deploy the docker host AMIs via CFT
-- hosts: apphost-managers
-  gather_facts: no
-  tasks:
-    - name: deploy app hosts 
-      include: "{{ install_path }}/roles/infra/tasks/deploy_apphost.yml"
-
 # Now that instances created, add them / their IPs to the dynamic apphosts group
 # so we can configure them 
+
+# From cft output in json
 - hosts:
    localhost
   gather_facts: no
@@ -23,6 +18,7 @@
         WebServerInstancePrivateIp="{{ item.stdout | from_json | attr('get')('WebServerInstancePrivateIp') }}"
         ansible_ssh_user="ec2-user"
       with_items: output['results']
+
 
 # Now launch containers inside them
 # Amazon amis we're using already have docker installed so no need for install_docker role

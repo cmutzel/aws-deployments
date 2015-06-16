@@ -1,0 +1,63 @@
+---
+#Need to build topology again
+- hosts: 
+   localhost
+  gather_facts: no
+  tasks:
+    - shell: "cat ~/vars/f5aws/env/{{ env_name }}/{{ item }}.json"
+      register: output
+      with_items: groups['gtm-managers']
+      delegate_to: localhost
+
+    - add_host: name="{{ item.stdout | from_json | attr('get')('ManagementInterfacePublicIp') }}" group=gtms
+        ExternalInterfacePublicIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePublicIp') }}"
+        ExternalInterfacePrivateIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePrivateIp') }}"
+        RegKey="{{ item.stdout | from_json | attr('get')('RegKey') }}"
+        VipAddress="{{ item.stdout | from_json | attr('get')('Vip2') }}"
+        region="{{region}}"
+        ansible_ssh_user="admin"
+      with_items: output['results']
+
+#
+#TODO:
+# Create Virtual Server
+# Create Pool
+# Create Wideip
+
+# - hosts: gtms
+#   gather_facts: no
+#     - name: Setup the Virtual Servers
+#       delegate_to: localhost
+#       bigip_config:
+#           state=present
+#           host="{{ inventory_hostname }}"
+#           user="{{ bigip_rest_user }}"
+#           password="{{ bigip_rest_pass }}"
+#           payload='{"name":"{{vs_name}}","address":{{vs_address}}'
+#           collection_path='mgmt/tm/gtm/server/{{bigip_object}}/virtual-servers'
+#           resource_key="name"
+# 
+#     - name: Setup the GTM Pool
+#       delegate_to: localhost
+#       bigip_config:
+#           state=present
+#           host="{{ inventory_hostname }}"
+#           user="{{ bigip_rest_user }}"
+#           password="{{ bigip_rest_pass }}"
+#           payload='{"name": "{{pool_name}}","loadBalancingMode":"round-robin", "members": [ "{{hostvars[BIGIP1][Vip2] }}","{{hostvars[BIGIP2][Vip2]}}" }' 
+#           collection_path='mgmt/tm/gtm/server/pool'
+#           resource_key="name"
+# 
+# 
+#     - name: Setup the Wideip
+#       delegate_to: localhost
+#       bigip_config:
+#           state=present
+#           host="{{ inventory_hostname }}"
+#           user="{{ bigip_rest_user }}"
+#           password="{{ bigip_rest_pass }}"
+#           payload='{"name": "{{wideip_name}}","poolLBMode":"global-avaialability", "pools": [ "{{hostvars[BIGIP1][Vip2] }}","{{hostvars[BIGIP2][Vip2]}}" }' 
+#           collection_path='mgmt/tm/gtm/wideip'
+#           resource_key="name"
+# 
+# 
