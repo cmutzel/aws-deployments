@@ -1,0 +1,13 @@
+---
+# tasks file for bigip
+# - name: run bash
+#   raw: bash
+
+- name: modify change password
+  raw: modify auth user admin password '{{ bigip_rest_password }}'  
+  ignore_errors: True
+
+- name: Save running config to disk
+  raw: save /sys config 
+  ignore_errors: True
+ 

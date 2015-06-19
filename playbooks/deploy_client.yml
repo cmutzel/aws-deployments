@@ -100,7 +100,7 @@
     - name: Copy over attack jmeter script
       copy: src=../roles/client/files/attack-site.jmx dest=~/
 # 
-#     - name: Launch jmeter script in background
-#       shell: nohup jmeter -n -t ~/simple-load-generation.jmx &
+#    - name: Launch jmeter script in background
+#      shell: nohup jmeter -n -t ~/simple-load-generation.jmx &
 # 
    

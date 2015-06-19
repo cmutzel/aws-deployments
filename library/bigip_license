@@ -115,7 +115,6 @@ EXAMPLES = """
 """
 
 import sys
-sys.path.append("/Users/applebaum/Downloads/bigsuds-1.0/bigsuds-1.0.1/build/lib/")
 import re
 import os
 import tempfile
@@ -394,6 +393,7 @@ def main():
 
         if state == "present":
             lic_status = obj.get_license_activation_status()
+
             if lic_status == 'STATE_ENABLED':
                 module.exit_json(changed=False)
 
@@ -409,12 +409,12 @@ def main():
             resp = obj.get_license(wsdl)
 
             if resp.state == "EULA_REQUIRED":
-                #Extract the eula offered from first try
+                # Extract the eula offered from first try
                 eula_string = resp.eula
                 obj.license_options['eula'] = eula_string
                 resp = obj.get_license(wsdl)
 
-            #Try again, this time with eula populated
+            # Try again, this time with eula populated
             if resp.state == 'LICENSE_RETURNED':
                 big_license = resp.license
                 if license:
@@ -440,4 +440,3 @@ def main():
 
 from ansible.module_utils.basic import *
 main()
-

@@ -10,33 +10,136 @@
       delegate_to: localhost
 
     - add_host: name="{{ item.stdout | from_json | attr('get')('ManagementInterfacePublicIp') }}" group=gtms
+        ManagementInterfacePublicIp="{{ item.stdout | from_json | attr('get')('ManagementInterfacePublicIp') }}"
+        ManagementInterfacePrivateIp="{{ item.stdout | from_json | attr('get')('ManagementInterfacePrivateIp') }}"
         ExternalInterfacePublicIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePublicIp') }}"
         ExternalInterfacePrivateIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePrivateIp') }}"
         RegKey="{{ item.stdout | from_json | attr('get')('RegKey') }}"
-        VipAddress="{{ item.stdout | from_json | attr('get')('Vip2') }}"
+        VipAddress="{{ item.stdout | from_json | attr('get')('Vip1') }}"
         region="{{region}}"
         ansible_ssh_user="admin"
       with_items: output['results']
 
-#
-#TODO:
-# Create Virtual Server
-# Create Pool
-# Create Wideip
+    #Gather BIGIP Data and re-create group
+    - shell: "cat ~/vars/f5aws/env/{{ env_name }}/{{ item }}.json"
+      register: output
+      with_items: groups['bigip-managers']
+      delegate_to: localhost
 
-# - hosts: gtms
-#   gather_facts: no
-#     - name: Setup the Virtual Servers
-#       delegate_to: localhost
-#       bigip_config:
-#           state=present
-#           host="{{ inventory_hostname }}"
-#           user="{{ bigip_rest_user }}"
-#           password="{{ bigip_rest_pass }}"
-#           payload='{"name":"{{vs_name}}","address":{{vs_address}}'
-#           collection_path='mgmt/tm/gtm/server/{{bigip_object}}/virtual-servers'
-#           resource_key="name"
-# 
+    - add_host: name="{{ item.stdout | from_json | attr('get')('ManagementInterfacePublicIp') }}" group=bigips
+        ManagementInterfacePublicIp="{{ item.stdout | from_json | attr('get')('ManagementInterfacePublicIp') }}"
+        ManagementInterfacePrivateIp="{{ item.stdout | from_json | attr('get')('ManagementInterfacePrivateIp') }}"
+        ExternalInterfacePublicIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePublicIp') }}"
+        ExternalInterfacePrivateIp="{{ item.stdout | from_json | attr('get')('ExternalInterfacePrivateIp') }}"
+        region="{{region}}"
+        ansible_ssh_user="admin"
+      with_items: output['results']
+
+    - shell: "cat ~/vars/f5aws/env/{{ env_name }}/{{ item }}-vip-Vip2.json"
+      register: output
+      with_items: groups['bigip-managers']
+      delegate_to: localhost
+
+    - add_host: name="{{ item.stdout | from_json | attr('get')('eipAddress') }}" group=bigip_vips
+        VipEip="{{ item.stdout | from_json | attr('get')('eipAddress') }}"
+        VipPrivateIp="{{ item.stdout | from_json | attr('get')('privateIpAddress') }}"
+        bigipManager="{{ item.item }}"
+      with_items: output['results']
+
+
+  #Gather EIPs info for VIP 1
+  # Hardcoded for number of bigips  
+  # TODO: Need a more dynamic way to loop through and add each BIGIP's EIP to VIP mapping
+- hosts: bigips[0]
+  gather_facts: no
+  tasks:
+    - shell: "cat ~/vars/f5aws/env/{{ env_name }}/{{ item }}-vip-Vip2.json"
+      register: output
+      with_items: groups['bigip-managers'][0]
+      delegate_to: localhost
+     
+    - set_fact:
+        VipPrivateIp: "{{ output['results'][0]['stdout'] | from_json | attr('get')('privateIpAddress') }}"
+        VipEip: "{{ output['results'][0]['stdout'] | from_json | attr('get')('eipAddress') }}"
+        bigipManager: "{{ output['results'][0]['item'] }}"
+
+
+- hosts: bigips[1]
+  gather_facts: no
+  tasks:
+    - shell: "cat ~/vars/f5aws/env/{{ env_name }}/{{ item }}-vip-Vip2.json"
+      register: output
+      with_items: groups['bigip-managers'][1]
+      delegate_to: localhost
+     
+    - set_fact:
+        VipPrivateIp: "{{ output['results'][0]['stdout'] | from_json | attr('get')('privateIpAddress') }}"
+        VipEip: "{{ output['results'][0]['stdout'] | from_json | attr('get')('eipAddress') }}"
+        bigipManager: "{{ output['results'][0]['item'] }}"
+
+
+- hosts: gtms
+  vars:
+    vip_id: "Vip2"
+  gather_facts: no
+  tasks:
+
+
+    - name: Setup the Virtual Servers
+      delegate_to: localhost
+      bigip_config:
+          state=present
+          host="{{ inventory_hostname }}"
+          user="{{ bigip_rest_user }}"
+          password="{{ bigip_rest_pass }}"
+          payload='{"name":"{{vip_id}}","destination":"{{hostvars[item]["VipEip"]}}:80","translationAddress":"{{hostvars[item]["VipPrivateIp"]}}"}'
+          collection_path='mgmt/tm/gtm/server/~Common~ip-{{hostvars[item]["ManagementInterfacePrivateIp"]|replace(".","-")}}.ec2.internal/virtual-servers'
+          resource_key="name"
+      with_items: groups['bigips']
+
+# {
+#     "items": [
+#         {
+#             "destination": "54.173.18.65:80",
+#             "enabled": true,
+#             "fullPath": "Vip2",
+#             "generation": 122,
+#             "kind": "tm:gtm:server:virtual-servers:virtual-serversstate",
+#             "limitMaxBps": 0,
+#             "limitMaxBpsStatus": "disabled",
+#             "limitMaxConnections": 0,
+#             "limitMaxConnectionsStatus": "disabled",
+#             "limitMaxPps": 0,
+#             "limitMaxPpsStatus": "disabled",
+#             "name": "Vip2",
+#             "selfLink": "https://localhost/mgmt/tm/gtm/server/~Common~ip-172-16-11-22.ec2.internal/virtual-servers/Vip2?ver=11.6.0",
+#             "translationAddress": "172.16.13.112",
+#             "translationPort": 80
+#         },
+#         {
+#             "destination": "54.165.252.30:80",
+#             "enabled": true,
+#             "fullPath": "Vip2",
+#             "generation": 122,
+#             "kind": "tm:gtm:server:virtual-servers:virtual-serversstate",
+#             "limitMaxBps": 0,
+#             "limitMaxBpsStatus": "disabled",
+#             "limitMaxConnections": 0,
+#             "limitMaxConnectionsStatus": "disabled",
+#             "limitMaxPps": 0,
+#             "limitMaxPpsStatus": "disabled",
+#             "name": "Vip2",
+#             "selfLink": "https://localhost/mgmt/tm/gtm/server/~Common~ip-172-16-11-22.ec2.internal/virtual-servers/Vip2?ver=11.6.0",
+#             "translationAddress": "172.16.13.113",
+#             "translationPort": 80
+#         }
+#     ],
+#     "kind": "tm:gtm:server:virtual-servers:virtual-serverscollectionstate",
+#     "selfLink": "https://localhost/mgmt/tm/gtm/server/~Common~ip-172-16-11-22.ec2.internal/virtual-servers?ver=11.6.0"
+# }
+
+# Create Pool
+#
 #     - name: Setup the GTM Pool
 #       delegate_to: localhost
 #       bigip_config:
@@ -47,17 +150,58 @@
 #           payload='{"name": "{{pool_name}}","loadBalancingMode":"round-robin", "members": [ "{{hostvars[BIGIP1][Vip2] }}","{{hostvars[BIGIP2][Vip2]}}" }' 
 #           collection_path='mgmt/tm/gtm/server/pool'
 #           resource_key="name"
-# 
-# 
-#     - name: Setup the Wideip
-#       delegate_to: localhost
-#       bigip_config:
-#           state=present
-#           host="{{ inventory_hostname }}"
-#           user="{{ bigip_rest_user }}"
-#           password="{{ bigip_rest_pass }}"
-#           payload='{"name": "{{wideip_name}}","poolLBMode":"global-avaialability", "pools": [ "{{hostvars[BIGIP1][Vip2] }}","{{hostvars[BIGIP2][Vip2]}}" }' 
-#           collection_path='mgmt/tm/gtm/wideip'
-#           resource_key="name"
-# 
-# 
+
+- hosts: gtms
+  vars:
+    vip_id: "Vip2"
+  gather_facts: no
+  tasks:
+    - name: Setup the AZ1 pool
+      delegate_to: localhost
+      bigip_config:
+          state=present
+          host="{{ inventory_hostname }}"
+          user="{{ bigip_rest_user }}"
+          password="{{ bigip_rest_pass }}"
+          payload='{"name":"{{vip_id}}_pool_AZ1","loadBalancingMode":"round-robin","members":[{"name":"ip-{{hostvars[item]["ManagementInterfacePrivateIp"]|replace(".","-")}}.ec2.internal:{{vip_id}}"}]}'
+          collection_path='mgmt/tm/gtm/pool'
+          resource_key="name"
+      with_items: groups['bigips'][0]
+
+    - name: Setup the AZ2 pool
+      delegate_to: localhost
+      bigip_config:
+          state=present
+          host="{{ inventory_hostname }}"
+          user="{{ bigip_rest_user }}"
+          password="{{ bigip_rest_pass }}"
+          payload='{"name":"{{vip_id}}_pool_AZ2","loadBalancingMode":"round-robin","members":[{"name":"ip-{{hostvars[item]["ManagementInterfacePrivateIp"]|replace(".","-")}}.ec2.internal:{{vip_id}}"}]}'
+          collection_path='mgmt/tm/gtm/pool'
+          resource_key="name"
+      with_items: groups['bigips'][1]
+
+
+    - name: Setup the Wideip
+      delegate_to: localhost
+      bigip_config:
+          state=present
+          host="{{ inventory_hostname }}"
+          user="{{ bigip_rest_user }}"
+          password="{{ bigip_rest_pass }}"
+          payload='{"name":"{{vip_id}}.example.com","poolLbMode":"round-robin","ipv6NoErrorResponse":"enabled","pools":[{"name":"{{vip_id}}_pool_AZ1"},{"name":"{{vip_id}}_pool_AZ2"}]}'
+          collection_path='mgmt/tm/gtm/wideip'
+          resource_key="name"
+
+
+    - name: Setup the Wideip
+      delegate_to: localhost
+      bigip_config:
+          state=present
+          host="{{ inventory_hostname }}"
+          user="{{ bigip_rest_user }}"
+          password="{{ bigip_rest_pass }}"
+          payload='{"name":"demo.example.com","poolLbMode":"round-robin","ipv6NoErrorResponse":"enabled","pools":[{"name":"{{vip_id}}_pool_AZ1"},{"name":"{{vip_id}}_pool_AZ2"}]}'
+          collection_path='mgmt/tm/gtm/wideip'
+          resource_key="name"
+
+

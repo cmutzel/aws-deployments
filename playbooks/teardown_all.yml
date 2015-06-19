@@ -12,7 +12,7 @@
   gather_facts: no
   tasks: 
     - name: teardown eip associated with Vip1
-      include: "{{ install_path }}/roles/gtm_app/tasks/teardown_eip.yml"
+      include: "{{ install_path }}/roles/infra/tasks/teardown_eip.yml"
 
 - hosts: gtm-managers
   gather_facts: no
@@ -26,7 +26,7 @@
   gather_facts: no
   tasks: 
     - name: teardown eip associated with Vip2
-      include: "{{ install_path }}/roles/bigip_app/tasks/teardown_eip.yml"
+      include: "{{ install_path }}/roles/infra/tasks/teardown_eip.yml"
 
 - hosts: bigip-managers
   vars: 
@@ -34,7 +34,7 @@
   gather_facts: no
   tasks: 
     - name: teardown eip associated with Vip1
-      include: "{{ install_path }}/roles/bigip_app/tasks/teardown_eip.yml"
+      include: "{{ install_path }}/roles/infra/tasks/teardown_eip.yml"
 
 - hosts: bigip-managers
   gather_facts: no

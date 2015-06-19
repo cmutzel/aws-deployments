@@ -12,4 +12,3 @@
   debug: var=client_teardown_results  
 
 - copy: content="{{ client_teardown_results | to_yaml }}" dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.yml
-- copy: content="{{ clienthost_teardown_results['stack_outputs'] | to_json }}" dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.json

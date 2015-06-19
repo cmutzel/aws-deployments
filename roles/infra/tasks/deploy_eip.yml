@@ -19,3 +19,4 @@
 
 - name: create a file in which to persist results
   copy: content="{{ eip_results | to_yaml }}" dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}-vip-{{vip_id}}.yml
+- copy: content="{{ eip_results['stack_outputs'] | to_json }}" dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}-vip-{{vip_id}}.json

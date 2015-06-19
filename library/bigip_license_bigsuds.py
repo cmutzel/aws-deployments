@@ -240,11 +240,11 @@ import bigsuds
  
  
 #Misc EULA Variables
-email  = "example.icontrol@f5.com"
+email  = "example.icontrol@example.com"
 firstName = "example"
-lastName = "iControl"
-companyName = "F5"
-phone = "2062725555"
+lastName = "icontrol"
+companyName = "Example"
+phone = "111-111-1111"
 jobTitle = "DEV OPS"
 address = "111 EXAMPLE ICONTROL RD"
 city = "Seattle"

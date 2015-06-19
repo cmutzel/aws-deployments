@@ -15,6 +15,18 @@
     collection_path='mgmt/tm/sys/global-settings'
     #payload='{"awsAccessKey":"{{bigip_aws_access_key_id}}", "awsSecretKey":"{{bigip_aws_secret_access_key}}"}'
 
+  #Note, here we're just using AWS convention but we could/should also 
+  #grab existing first or somehow use a preconfigured hostname (but have to get into dynamic bigip group) 
+- name: Statically set hostname so when disable DHCP we dont lose it
+  delegate_to: localhost
+  bigip_config:
+    state=present
+    host={{ inventory_hostname }}
+    user={{ bigip_rest_user }}
+    password={{ bigip_rest_pass }}
+    payload='{"hostname":"ip-{{ManagementInterfacePrivateIp|replace(".","-")}}.ec2.internal"}'
+    collection_path='mgmt/tm/sys/global-settings'
+
 - name: Disable dhcp
   delegate_to: localhost
   bigip_config:

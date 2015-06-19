@@ -1,7 +1,8 @@
 ---
+# We may need to change the shell to be bash as some legacy cli tools like 
+# bigip_add might like it
+
 # tasks file for bigip
-#  All tmsh commands use "executable: bash" to ensure that ssh drops out of tmsh,
-#    otherwise tmsh will puke when ansible tries to drop into /bin/sh
 # - name: run bash
 #   raw: bash
 
@@ -9,17 +10,8 @@
   raw: modify auth user admin password '{{ bigip_rest_password }}' 
   ignore_errors: True
 
-- name: save config
-  raw: save sys config 
+- name: Save running config to disk
+  raw: save /sys config
+  ignore_errors: True
 
-#### DON'T THINK WE NEED TO DO THIS AS WILL BE DOING REST FROM HERE ON OUT
 
-# - name: change admins shell to bash
-#   raw: modify auth user admin shell bash 
-#   ignore_errors: True
-# 
-# - name: pause couple of seconds to let shell restart
-#   pause: seconds=5
-#   tags:
-#       - pause 
-# 

@@ -31,8 +31,9 @@
 - pip: name=boto state=present
 
 - pip: name=suds state=present
-
 - pip: name=bigsuds state=present
+
+- pip: name=pexpect state=present
 
 #docker module only compat with version 1.1.0
 #https://github.com/ansible/ansible/issues/10879
