@@ -75,7 +75,7 @@
     - name: Teardown az
       include: "{{ install_path }}/roles/infra/tasks/teardown_az_cft.yml"
 
-- hosts: vpc
+- hosts: vpc-manager
   gather_facts: no
   vars:
     ansible_connection: local
