@@ -153,20 +153,20 @@ class F5Aws(object):
         See individual playbooks for more info.
     """
     playbooks = [
-      'deploy_vpc_cft.yml',
-      'deploy_az_cft.yml',
-      'deploy_bigip_cft.yml',
-      'deploy_gtm_cft.yml',
-      'deploy_app_cft.yml',
-      'deploy_client_cft.yml',
-      'deploy_app.yml',
-      'deploy_bigip.yml',
-      'deploy_bigip_app1.yml',
-      'deploy_bigip_app2.yml',
-      'deploy_gtm.yml',
-      'deploy_gtm_app1.yml',
-      'deploy_gtm_app2.yml',
-      'deploy_client.yml'
+#       'deploy_vpc_cft.yml',
+#       'deploy_az_cft.yml',
+#       'deploy_bigip_cft.yml',
+#       'deploy_gtm_cft.yml',
+#       'deploy_app_cft.yml',
+#       'deploy_client_cft.yml',
+#       'deploy_app.yml',
+#       'deploy_bigip.yml',
+#       'deploy_bigip_app1.yml',
+#       'deploy_bigip_app2.yml',
+#       'deploy_gtm.yml',
+#       'deploy_gtm_app1.yml',
+#       'deploy_gtm_app2.yml',
+#       'deploy_client.yml'
     ]
 
     # uses the inventory created in ~/vars/f5aws/env/<env name> created by `init`
@@ -178,7 +178,7 @@ class F5Aws(object):
       __prog__, 'start_traffic', options.env_name)
 
     print '\nYou can re-print the above login information along with the ansible inventory \
-using "info" command'
+using "info" command\n'
     
   @safe
   def cmd_teardown(self, options, extra_vars):
@@ -461,44 +461,50 @@ Hint: try './bin/f5aws teardown %s'""" % (env, stillExist, env)
     # this information is compiled from the ansible inventory for this environment
     # and the output from the cloudformation stacks
     for group in ['apphosts', 'bigips', 'gtms', 'clients']:
-      print 'Login for %s:' % group
-      group_info = inventory[group]
-    
-      # hostnames are not plural
-      host_type = group[:-1]
 
-      #not very efficient, but hey, its a demo
-      for resource_name, status in statuses.items():
-        match = re.match('^zone[0-9]+[/-]{}[0-9]*'.format(host_type),resource_name)
+       try:
+          if inventory[group]:
+	      print 'Login for %s:' % group
+	      group_info = inventory[group]
+	    
+	      # hostnames are not plural
+	      host_type = group[:-1]
 
-        if match:
-          try:
-            if host_type == 'gtm':
-              print '     {}ssh -i {} {}@{}'.format(
-                self.host_to_az(resource_name, ansible_inventory),
-                group_info['vars']['ansible_ssh_private_key_file'],
-                group_info['vars']['ansible_ssh_user'],
-                status['resource_vars']['ManagementInterfacePublicIp'])
-            elif host_type == 'bigip':
-              print '     {}ssh -i {} {}@{}'.format(
-                self.host_to_az(resource_name, ansible_inventory),
-                group_info['vars']['ansible_ssh_private_key_file'],
-                group_info['vars']['ansible_ssh_user'],
-                status['resource_vars']['ManagementInterfacePublicIp'])
-            elif host_type == 'apphost':
-              print '     {}ssh -i {} {}@{}'.format(
-                self.host_to_az(resource_name, ansible_inventory),
-                group_info['vars']['ansible_ssh_private_key_file'],
-                group_info['vars']['ansible_ssh_user'],
-                status['resource_vars']['WebServerInstancePublicIp'])
-            elif host_type == 'client':
-              print '     {}ssh -i {} {}@{}'.format(
-                self.host_to_az(resource_name, ansible_inventory),
-                group_info['vars']['ansible_ssh_private_key_file'],
-                group_info['vars']['ansible_ssh_user'],
-                status['resource_vars']['ClientInstancePublicIp'])
-          except KeyError:
-            print '     Not deployed/Login information not available.'
+	      #not very efficient, but hey, its a demo
+	      for resource_name, status in statuses.items():
+		match = re.match('^zone[0-9]+[/-]{}[0-9]*'.format(host_type),resource_name)
+
+		if match:
+		  try:
+		    if host_type == 'gtm':
+		      print '     {}ssh -i {} {}@{}'.format(
+			self.host_to_az(resource_name, ansible_inventory),
+			group_info['vars']['ansible_ssh_private_key_file'],
+			group_info['vars']['ansible_ssh_user'],
+			status['resource_vars']['ManagementInterfacePublicIp'])
+		    elif host_type == 'bigip':
+		      print '     {}ssh -i {} {}@{}'.format(
+			self.host_to_az(resource_name, ansible_inventory),
+			group_info['vars']['ansible_ssh_private_key_file'],
+			group_info['vars']['ansible_ssh_user'],
+			status['resource_vars']['ManagementInterfacePublicIp'])
+		    elif host_type == 'apphost':
+		      print '     {}ssh -i {} {}@{}'.format(
+			self.host_to_az(resource_name, ansible_inventory),
+			group_info['vars']['ansible_ssh_private_key_file'],
+			group_info['vars']['ansible_ssh_user'],
+			status['resource_vars']['WebServerInstancePublicIp'])
+		    elif host_type == 'client':
+		      print '     {}ssh -i {} {}@{}'.format(
+			self.host_to_az(resource_name, ansible_inventory),
+			group_info['vars']['ansible_ssh_private_key_file'],
+			group_info['vars']['ansible_ssh_user'],
+			status['resource_vars']['ClientInstancePublicIp'])
+		  except KeyError:
+		    print '     Not deployed/Login information not available.'
+       except KeyError:
+           print ''
+	   #print '     Not deployed/Login information not available.'
 
   def host_to_az(self, resource_name, ansible_inventory):
     # traverse the ansible inventory to get the availability zone
