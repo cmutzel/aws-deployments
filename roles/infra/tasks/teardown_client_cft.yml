@@ -1,5 +1,5 @@
 ---
-- name: Deleting clienthost cfn stack(s)
+- name: Deleting client cfn stack(s)
   action: cloudformation
     stack_name="{{ env_name }}-{{ inventory_hostname }}"
     state=absent

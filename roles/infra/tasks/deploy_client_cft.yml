@@ -24,18 +24,18 @@
     tags:
       Environment: "{{ env_name }}"
       Host: "{{ inventory_hostname }}"
-      InstanceType: "ClientHost"
+      InstanceType: "Client"
     template_parameters:
       vpc: "{{ vpc_id }}"
       clientSubnet: "{{ public_subnet }}"
-      instanceType: "{{ clienthost_instance_type }}"
+      instanceType: "{{ client_instance_type }}"
       keyName: "{{ key_name }}"
 
-  register: clienthost_deploy_results
+  register: client_deploy_results
 
-#- name: debug clienthost_deploy_results var 
-#  debug: var=clienthost_deploy_results
+#- name: debug client_deploy_results var 
+#  debug: var=client_deploy_results
 
 # Persist data to disk for use across plays
-- copy: content="{{ clienthost_deploy_results | to_yaml }}" dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.yml
-- copy: content="{{ clienthost_deploy_results['stack_outputs'] | to_json }}" dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.json
+- copy: content="{{ client_deploy_results | to_yaml }}" dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.yml
+- copy: content="{{ client_deploy_results['stack_outputs'] | to_json }}" dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.json

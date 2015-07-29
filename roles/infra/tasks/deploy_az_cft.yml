@@ -33,6 +33,6 @@
   register: az_deploy_results
 
 - name: Persisting variable data
-  template: src='host-managers.j2' dest=~/vars/f5aws/env/{{ env_name }}/inventory/group_vars/{{zone_id}}-az-managers
+  template: src='az.j2' dest=~/vars/f5aws/env/{{ env_name }}/inventory/group_vars/{{zone_id}}
 
 - copy: content="{{ az_deploy_results | to_yaml }}" dest=~/vars/f5aws/env/{{ env_name }}/{{ inventory_hostname }}.yml
